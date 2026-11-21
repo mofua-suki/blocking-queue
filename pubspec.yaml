@@ -1,0 +1,10 @@
+name: blocking_queue
+description: Dart queues that wait for items, with either FIFO buffering or a buffer that keeps only the latest item.
+version: 0.1.0
+repository: https://github.com/mofua-suki/blocking-queue
+
+environment:
+  sdk: '>=3.10.0 <4.0.0'
+
+dev_dependencies:
+  test: ^1.24.0

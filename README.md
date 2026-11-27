@@ -68,9 +68,13 @@ Future<void> main() async {
   waiting consumers receive items in the order they called `dequeue()`.
   Consumers can finish processing at different times.
 - Queues are for a single Dart isolate, and `T` is non-nullable. An empty
-  queue waits until an item arrives or the owner disposes it. A caller-side
-  `Future.timeout` leaves the underlying dequeue pending, so that waiter can
-  still consume a later item.
+  queue waits until an item arrives or the owner disposes it. Use
+  `dequeue(timeout: duration)` to withdraw the wait with `TimeoutException`.
+  A caller-side `Future.timeout` leaves the queue's request pending.
+- For manual cancellation, use `final request = queue.dequeueCancellable()`,
+  await `request.future`, and call `request.cancel()` when the consumer no longer
+  needs the item. A cancelled wait fails with `DequeueCancelledException`.
+  Cancellation after assignment leaves the delivered item with its consumer.
 - `dispose()` is idempotent. It discards buffered items, fails outstanding
   waits with `AlreadyDisposedException`, and leaves delivered items with
   their consumers. To finish buffered work, drain it before disposal.

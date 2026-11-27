@@ -1,3 +1,7 @@
+## Unreleased
+
+- Add timeouts and manual cancellation that remove pending dequeue requests.
+
 ## 0.1.1
 
 - Add a Japanese README and link both language editions to pub.dev.

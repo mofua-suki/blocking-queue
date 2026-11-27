@@ -1,8 +1,18 @@
 # Blocking Queue
 
+[日本語](https://github.com/mofua-suki/blocking-queue/blob/main/README.ja.md) · [pub.dev](https://pub.dev/packages/blocking_queue)
+
 Hand off items from a producer to one or more asynchronous consumers in the
 same Dart isolate. Call `dequeue()` to wait for the next item when the buffer is
 empty.
+
+## Installation
+
+Requires Dart SDK 3.10.0 or later, below 4.0.0.
+
+```sh
+dart pub add blocking_queue
+```
 
 ## Choose a buffer
 
@@ -67,3 +77,15 @@ Future<void> main() async {
 - After disposal, `enqueue()` throws synchronously and `dequeue()` returns a
   failed future. Handle errors from outstanding dequeue futures during
   shutdown.
+
+## Development
+
+Run these commands from the repository root.
+
+```sh
+dart pub get
+dart analyze
+dart test
+```
+
+Run the example with `dart run example/blocking_queue_example.dart`.

@@ -1,3 +1,7 @@
+## 0.1.1
+
+- Add a Japanese README and link both language editions to pub.dev.
+
 ## 0.1.0
 
 - Add an awaitable FIFO queue and a queue that retains the latest buffered item.

@@ -1,6 +1,7 @@
 ## 0.1.2
 
 - Add timeouts and manual cancellation that remove pending dequeue requests.
+- Remove the pending request if a custom zone throws during timer registration.
 
 ## 0.1.1
 

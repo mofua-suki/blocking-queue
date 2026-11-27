@@ -81,11 +81,16 @@ sealed class BlockingQueue<T extends Object> {
     }
 
     if (timeout != null) {
-      waiter.timer = Timer(timeout, () {
-        withdraw(
-          TimeoutException('No item arrived before the timeout.', timeout),
-        );
-      });
+      try {
+        waiter.timer = Timer(timeout, () {
+          withdraw(
+            TimeoutException('No item arrived before the timeout.', timeout),
+          );
+        });
+      } catch (_) {
+        _waiters.remove(waiter);
+        rethrow;
+      }
     }
     return (
       future: waiter.completer.future,

@@ -1,4 +1,4 @@
-## Unreleased
+## 0.1.2
 
 - Add timeouts and manual cancellation that remove pending dequeue requests.
 

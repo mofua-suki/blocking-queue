@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:blocking_queue/blocking_queue.dart';
 import 'package:test/test.dart';
 
@@ -70,6 +72,51 @@ void main() {
         expect(await first, 1);
         expect(await second, 2);
       });
+
+      test(
+        'an expired request leaves the next item for the next waiter',
+        () async {
+          final expired = queue.dequeue(timeout: Duration.zero);
+          final next = queue.dequeue();
+
+          await expectLater(expired, throwsA(isA<TimeoutException>()));
+          queue.enqueue(42);
+          expect(await next, 42);
+        },
+      );
+
+      test('cancelling one waiter preserves the order of the others', () async {
+        final first = queue.dequeue();
+        final abandoned = queue.dequeueCancellable(timeout: Duration.zero);
+        final last = queue.dequeue();
+        final cancelled = expectLater(
+          abandoned.future,
+          throwsA(isA<DequeueCancelledException>()),
+        );
+        abandoned.cancel();
+        abandoned.cancel();
+        queue.enqueue(42);
+        queue.enqueue(43);
+
+        await cancelled;
+        expect(await first, 42);
+        expect(await last, 43);
+      });
+
+      test(
+        'cancellation leaves buffered and assigned values available',
+        () async {
+          final pending = queue.dequeueCancellable(timeout: Duration.zero);
+          queue.enqueue(42);
+          pending.cancel();
+          expect(await pending.future, 42);
+
+          queue.enqueue(43);
+          final buffered = queue.dequeueCancellable(timeout: Duration.zero);
+          buffered.cancel();
+          expect(await buffered.future, 43);
+        },
+      );
 
       test('disposal fails every waiter and can be repeated', () async {
         final first = expectLater(

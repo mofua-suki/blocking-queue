@@ -14,7 +14,7 @@ sealed class BlockingQueue<T extends Object> {
   /// Initializes an empty queue for a concrete buffering policy.
   BlockingQueue();
 
-  final _waiters = Queue<Completer<T>>();
+  final _waiters = Queue<_Waiter<T>>();
   bool _isDisposed = false;
 
   /// Delivers [item] to the oldest waiting consumer or stores it in the buffer.
@@ -31,7 +31,7 @@ sealed class BlockingQueue<T extends Object> {
 
     if (_waiters.isNotEmpty) {
       // Preserve Future-valued items as data.
-      _waiters.removeFirst().complete(Future<T>.syncValue(item));
+      _waiters.removeFirst().deliver(item);
     } else {
       _storeItem(item);
     }
@@ -44,23 +44,56 @@ sealed class BlockingQueue<T extends Object> {
   /// [AlreadyDisposedException] if the queue is disposed while waiting, or was
   /// already disposed.
   ///
-  /// Timing out the returned future with [Future.timeout] leaves this dequeue
-  /// pending until the queue delivers an item or is disposed.
-  Future<T> dequeue() {
+  /// A [timeout] removes the pending request and reports [TimeoutException].
+  /// Applying [Future.timeout] to the result only limits the caller's wait.
+  Future<T> dequeue({Duration? timeout}) =>
+      dequeueCancellable(timeout: timeout).future;
+
+  /// Starts a dequeue with a handle that can cancel it while it is pending.
+  ///
+  /// After cancellation, the future fails with [DequeueCancelledException].
+  /// Once a value is assigned, calling cancel has no effect.
+  ({Future<T> future, void Function() cancel}) dequeueCancellable({
+    Duration? timeout,
+  }) {
     if (_isDisposed) {
-      return Future<T>.error(
-        const AlreadyDisposedException('Cannot dequeue from a disposed queue.'),
-        StackTrace.current,
+      return (
+        future: Future<T>.error(
+          const AlreadyDisposedException(
+            'Cannot dequeue from a disposed queue.',
+          ),
+          StackTrace.current,
+        ),
+        cancel: _doNothing,
       );
     }
 
     final item = _takeItem();
-    if (item != null) return Future<T>.syncValue(item);
+    if (item != null) {
+      return (future: Future<T>.syncValue(item), cancel: _doNothing);
+    }
 
-    final waiter = Completer<T>();
+    final waiter = _Waiter<T>();
     _waiters.addLast(waiter);
-    return waiter.future;
+
+    void withdraw(Object error) {
+      if (_waiters.remove(waiter)) waiter.fail(error);
+    }
+
+    if (timeout != null) {
+      waiter.timer = Timer(timeout, () {
+        withdraw(
+          TimeoutException('No item arrived before the timeout.', timeout),
+        );
+      });
+    }
+    return (
+      future: waiter.completer.future,
+      cancel: () => withdraw(const DequeueCancelledException()),
+    );
   }
+
+  static void _doNothing() {}
 
   /// Discards buffered items and fails every pending [dequeue] with
   /// [AlreadyDisposedException].
@@ -73,7 +106,7 @@ sealed class BlockingQueue<T extends Object> {
     _clearItems();
 
     while (_waiters.isNotEmpty) {
-      _waiters.removeFirst().completeError(
+      _waiters.removeFirst().fail(
         const AlreadyDisposedException(
           'Queue disposed while waiting for an item.',
         ),
@@ -84,6 +117,29 @@ sealed class BlockingQueue<T extends Object> {
   void _storeItem(T item);
   T? _takeItem();
   void _clearItems();
+}
+
+final class _Waiter<T> {
+  final completer = Completer<T>();
+  Timer? timer;
+
+  void deliver(T item) {
+    timer?.cancel();
+    completer.complete(Future<T>.syncValue(item));
+  }
+
+  void fail(Object error) {
+    timer?.cancel();
+    completer.completeError(error);
+  }
+}
+
+/// A pending dequeue was cancelled before an item was assigned to it.
+final class DequeueCancelledException implements Exception {
+  const DequeueCancelledException();
+
+  @override
+  String toString() => 'DequeueCancelledException: Dequeue was cancelled.';
 }
 
 /// Buffers all items and dequeues them in the order they were enqueued.

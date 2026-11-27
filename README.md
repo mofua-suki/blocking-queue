@@ -61,6 +61,8 @@ Future<void> main() async {
 
 ## Delivery and lifecycle
 
+Queue-managed timeouts and cancellable dequeue requests require `blocking_queue` 0.1.2 or later.
+
 - `enqueue()` is synchronous. It hands the item directly to the oldest waiter
   when there is one. This applies to both queues, including when several
   consumers are waiting on a single-capacity queue.

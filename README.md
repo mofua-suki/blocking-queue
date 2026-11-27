@@ -73,9 +73,11 @@ Queue-managed timeouts and cancellable dequeue requests require `blocking_queue`
   queue waits until an item arrives or the owner disposes it. Use
   `dequeue(timeout: duration)` to withdraw the wait with `TimeoutException`.
   A caller-side `Future.timeout` leaves the queue's request pending.
-- For manual cancellation, use `final request = queue.dequeueCancellable()`,
-  await `request.future`, and call `request.cancel()` when the consumer no longer
-  needs the item. A cancelled wait fails with `DequeueCancelledException`.
+- For manual cancellation, keep the handle from
+  `final request = queue.dequeueCancellable()`. Register `request.cancel` as
+  the handler for a separate event, such as a cancel button press. Await
+  `request.future` inside a `try` block and handle `DequeueCancelledException`
+  when that event cancels the wait.
   Cancellation after assignment leaves the delivered item with its consumer.
 - `dispose()` is idempotent. It discards buffered items, fails outstanding
   waits with `AlreadyDisposedException`, and leaves delivered items with

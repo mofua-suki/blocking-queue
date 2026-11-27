@@ -85,6 +85,25 @@ void main() {
         },
       );
 
+      test('a failed timer registration removes its waiter', () async {
+        final error = StateError('Timer registration failed');
+        expect(
+          () => runZoned(
+            () => queue.dequeueCancellable(timeout: Duration.zero),
+            zoneSpecification: ZoneSpecification(
+              createTimer: (self, parent, zone, duration, callback) =>
+                  throw error,
+            ),
+          ),
+          throwsA(same(error)),
+        );
+
+        final next = queue.dequeue();
+        queue.enqueue(1);
+        queue.enqueue(2);
+        expect(await next, 1);
+      });
+
       test('cancelling one waiter preserves the order of the others', () async {
         final first = queue.dequeue();
         final abandoned = queue.dequeueCancellable(timeout: Duration.zero);
